@@ -658,9 +658,11 @@ function tzDate(offset = 0) {
   return d.toISOString().slice(0, 10);
 }
 
-// Build query for exclusive base fria (fcn IN (37, 38)) with date range
-// Uses _created_at (partition field) for efficiency
-function queryExclusive(dateStart, dateEnd) {
+// Build query for exclusive base fria (fcn IN (37, 38)) with date range.
+// _created_at is the BQ ingestion timestamp (partition column) — used only for
+// partition pruning with a broad 60-day window. created_at is the actual API
+// call timestamp and is used for precise date filtering.
+function queryExclusive(dateStart, dateEnd, partitionSince) {
   return `
     SELECT
       SUM(IF(fcn = 37, 1, 0)) AS sem_autos,
@@ -670,21 +672,23 @@ function queryExclusive(dateStart, dateEnd) {
     WHERE user_company_id = ${COMPANY_ID}
       AND fcn IN (37, 38)
       AND is_trial = FALSE
-      AND _created_at >= TIMESTAMP('${dateStart}')
-      AND _created_at < TIMESTAMP('${dateEnd}')
+      AND _created_at >= TIMESTAMP('${partitionSince}')
+      AND created_at >= TIMESTAMP('${dateStart}')
+      AND created_at < TIMESTAMP('${dateEnd}')
   `;
 }
 
 // Total base fria (fcn IN (1, 9)) for "with update" diff
-function queryAllBaseFria(dateStart, dateEnd) {
+function queryAllBaseFria(dateStart, dateEnd, partitionSince) {
   return `
     SELECT COUNT(*) AS total
     FROM \`${PROJECT}.data_production_op_read.api_call_log\`
     WHERE user_company_id = ${COMPANY_ID}
       AND fcn IN (1, 9)
       AND is_trial = FALSE
-      AND _created_at >= TIMESTAMP('${dateStart}')
-      AND _created_at < TIMESTAMP('${dateEnd}')
+      AND _created_at >= TIMESTAMP('${partitionSince}')
+      AND created_at >= TIMESTAMP('${dateStart}')
+      AND created_at < TIMESTAMP('${dateEnd}')
   `;
 }
 
@@ -756,14 +760,18 @@ async function loadAll() {
   // Current month start
   const curMonthStart = today.slice(0, 7) + '-01';
 
+  // _created_at broad window for partition pruning (data may be batch-loaded,
+  // so ingestion date differs from actual call date — go back 60 days to be safe)
+  const partitionSince = tzDate(-60);
+
   try {
     // Run queries in parallel for speed
     const [todayRows, yesterdayRows, weekRows, curMonthFromLog, allBaseFriaMonth] = await Promise.all([
-      runQuery(queryExclusive(today, tomorrow)),
-      runQuery(queryExclusive(yesterday, today)),
-      runQuery(queryExclusive(weekStartStr, tomorrow)),
-      runQuery(queryExclusive(curMonthStart, tomorrow)),
-      runQuery(queryAllBaseFria(curMonthStart, tomorrow)),
+      runQuery(queryExclusive(today, tomorrow, partitionSince)),
+      runQuery(queryExclusive(yesterday, today, partitionSince)),
+      runQuery(queryExclusive(weekStartStr, tomorrow, partitionSince)),
+      runQuery(queryExclusive(curMonthStart, tomorrow, partitionSince)),
+      runQuery(queryAllBaseFria(curMonthStart, tomorrow, partitionSince)),
     ]);
 
     const todayTotal = parseInt(todayRows[0]?.total || 0);
