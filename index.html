@@ -534,7 +534,7 @@ window.onload = function() {
   // Check for saved token
   const saved = sessionStorage.getItem('bq_token');
   if (saved) {
-    accessToken = saved;
+    accessToken = saved.replace(/\s/g, '');
     showDashboard();
     loadAll();
   }
@@ -578,7 +578,7 @@ function signInWithGoogle() {
 }
 
 function signInWithToken() {
-  const t = document.getElementById('token-input').value.trim();
+  const t = document.getElementById('token-input').value.replace(/\s/g, '');
   if (!t) { showAuthError('Cole um token de acesso válido.'); return; }
   accessToken = t;
   sessionStorage.setItem('bq_token', t);
