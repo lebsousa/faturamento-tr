@@ -513,7 +513,8 @@
 // =====================================================================
 // CONFIGURATION
 // =====================================================================
-const PROJECT = 'jusbrasil-155317';
+const PROJECT = 'jusbrasil-155317';        // dataset
+const BILLING_PROJECT = 'digestojud';      // projeto para billing dos jobs BQ
 const COMPANY_ID = 12211;
 
 // OAuth2 client ID — set up em console.cloud.google.com
@@ -601,10 +602,10 @@ function showDashboard() {
 // BQ QUERIES
 // =====================================================================
 async function runQuery(sql) {
-  const url = `https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT}/jobs`;
+  const url = `https://bigquery.googleapis.com/bigquery/v2/projects/${BILLING_PROJECT}/jobs`;
   const body = {
     configuration: { query: { query: sql, useLegacySql: false } },
-    jobReference: { projectId: PROJECT }
+    jobReference: { projectId: BILLING_PROJECT, location: 'US' }
   };
   const res = await fetch(url, {
     method: 'POST',
@@ -629,7 +630,7 @@ async function runQuery(sql) {
   for (let i = 0; i < 60; i++) {
     await new Promise(r => setTimeout(r, 2000));
     const statusRes = await fetch(
-      `https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT}/jobs/${jobId}`,
+      `https://bigquery.googleapis.com/bigquery/v2/projects/${BILLING_PROJECT}/jobs/${jobId}?location=US`,
       { headers: { 'Authorization': `Bearer ${accessToken}` } }
     );
     const status = await statusRes.json();
@@ -640,7 +641,7 @@ async function runQuery(sql) {
   }
 
   const resultsRes = await fetch(
-    `https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT}/queries/${jobId}?maxResults=1000`,
+    `https://bigquery.googleapis.com/bigquery/v2/projects/${BILLING_PROJECT}/queries/${jobId}?maxResults=1000&location=US`,
     { headers: { 'Authorization': `Bearer ${accessToken}` } }
   );
   const results = await resultsRes.json();
