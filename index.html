@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faturamento Thomson Reuters</title>
+  <script src="https://accounts.google.com/gsi/client" async></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #4f6ef7;
+      --accent2: #7c3aed;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* AUTH SCREEN */
+    #auth-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 2rem;
+    }
+    .auth-logo {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+    .auth-logo span { color: var(--accent); }
+    .auth-subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      align-items: center;
+    }
+    .google-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: #fff;
+      color: #1f2937;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      width: 100%;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .google-btn:hover { background: #f3f4f6; }
+    .google-btn svg { width: 20px; height: 20px; }
+
+    /* TOKEN INPUT fallback */
+    .token-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .token-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .token-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-family: monospace;
+      resize: vertical;
+      min-height: 80px;
+    }
+    .token-input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+    .token-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .token-btn:hover { opacity: 0.85; }
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+    }
+    .divider hr { flex: 1; border-color: var(--border); }
+    .divider span { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* DASHBOARD */
+    #dashboard { display: none; }
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-title {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .header-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .header-title .subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .last-updated {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .refresh-btn {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: border-color 0.15s;
+    }
+    .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .refresh-btn.loading svg { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .main { padding: 2rem; max-width: 1100px; margin: 0 auto; }
+
+    /* SECTION */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+    }
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .section-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(79, 110, 247, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(79, 110, 247, 0.3);
+    }
+    .badge.green {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--green);
+      border-color: rgba(16, 185, 129, 0.25);
+    }
+    .badge.yellow {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--yellow);
+      border-color: rgba(245, 158, 11, 0.25);
+    }
+
+    /* METRICS GRID */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .metric-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .metric-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.6rem;
+    }
+    .metric-value {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .metric-value.loading {
+      background: var(--border);
+      border-radius: 8px;
+      height: 2rem;
+      width: 80%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+    .metric-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    /* MONTH SECTION */
+    .month-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.25rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .month-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .month-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    select.month-select {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .month-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-left: auto;
+    }
+    .month-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: right;
+    }
+
+    /* MONITORING SECTION */
+    .monitor-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .monitor-info { flex: 1; }
+    .monitor-title {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .monitor-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+    .monitor-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-align: right;
+    }
+    .monitor-value.zero { color: var(--green); }
+    .monitor-value.nonzero { color: var(--yellow); }
+
+    /* ERROR */
+    .error-banner {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: var(--red);
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    /* FOOTER */
+    .footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    /* TOOLTIP helper */
+    .tip {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--border);
+      color: var(--text-muted);
+      font-size: 10px;
+      text-align: center;
+      line-height: 14px;
+      cursor: help;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-logo">Jusbrasil <span>OP</span></div>
+  <div class="auth-card">
+    <div style="text-align:center">
+      <div style="font-size:1.1rem;font-weight:600;">Faturamento Thomson Reuters</div>
+      <div class="auth-subtitle" style="margin-top:0.4rem">Acesse com sua conta Jusbrasil</div>
+    </div>
+
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Entrar com Google
+    </button>
+
+    <div class="divider">
+      <hr><span>ou use um token de acesso</span><hr>
+    </div>
+
+    <div class="token-section">
+      <div class="token-label">
+        Execute <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:0.8rem;">gcloud auth print-access-token</code> e cole o resultado abaixo:
+      </div>
+      <textarea class="token-input" id="token-input" placeholder="ya29.a0A..."></textarea>
+      <button class="token-btn" onclick="signInWithToken()">Acessar com token</button>
+    </div>
+  </div>
+  <div id="auth-error" style="color:var(--red);font-size:0.85rem;display:none;"></div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="header">
+    <div class="header-title">
+      <h1>Faturamento Thomson Reuters</h1>
+      <div class="subtitle">Thomson Reuters – PROD (março/26) · Empresa ID 12211</div>
+    </div>
+    <div class="header-right">
+      <span class="last-updated" id="last-updated">Carregando...</span>
+      <button class="refresh-btn" id="refresh-btn" onclick="loadAll()">
+        <svg id="refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+          <path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+          <path d="M8 16H3v5"/>
+        </svg>
+        Atualizar
+      </button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="error-banner" class="error-banner"></div>
+
+    <!-- SECTION 1: Consulta base fria exclusiva -->
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Consulta única de processos</div>
+          <div class="section-subtitle">
+            Base fria, sem pedidos de atualização
+            <span class="tip" title="SKUs 37 (fcn=37, sem autos) e 38 (fcn=38, com autos). Consultas na base fria que NÃO dispararam atualização no tribunal.">?</span>
+          </div>
+        </div>
+        <span class="badge green">Ao vivo</span>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Hoje</div>
+          <div class="metric-value" id="m-today">—</div>
+          <div class="metric-sub" id="m-today-sub">...</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Ontem</div>
+          <div class="metric-value" id="m-yesterday">—</div>
+          <div class="metric-sub" id="m-yesterday-sub">...</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Esta semana</div>
+          <div class="metric-value" id="m-week">—</div>
+          <div class="metric-sub" id="m-week-sub">...</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Mês atual</div>
+          <div class="metric-value" id="m-curmonth">—</div>
+          <div class="metric-sub" id="m-curmonth-sub">parcial</div>
+        </div>
+      </div>
+
+      <!-- Month selector -->
+      <div class="month-row">
+        <div class="month-select-wrap">
+          <span class="month-label">Histórico:</span>
+          <select class="month-select" id="month-select" onchange="loadMonth()">
+            <option value="">Selecione um mês...</option>
+          </select>
+        </div>
+        <div>
+          <div class="month-value" id="m-hist">—</div>
+          <div class="month-sub" id="m-hist-sub">consultas base fria exclusiva</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: Consulta com atualização (monitoring) -->
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Consulta única com atualização</div>
+          <div class="section-subtitle">
+            Consultas que também dispararam coleta no tribunal — monitoramento preventivo
+            <span class="tip" title="Diferença entre consultas base fria totais (fcn=1+9) e exclusivas (fcn=37+38). Zero é o esperado para Thomson Reuters.">?</span>
+          </div>
+        </div>
+        <span class="badge" id="update-badge">Monitorando</span>
+      </div>
+
+      <div class="monitor-row">
+        <div class="monitor-info">
+          <div class="monitor-title">Mês atual · com pedido de atualização</div>
+          <div class="monitor-desc">Se este número crescer, a Thomson Reuters está começando a pedir atualizações — revise o contrato.</div>
+        </div>
+        <div>
+          <div class="monitor-value zero" id="m-update">—</div>
+          <div class="month-sub" id="m-update-sub">consultas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Dados: BigQuery · jusbrasil-155317.data_production_op_read · Empresa 12211 · is_trial=false
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// CONFIGURATION
+// =====================================================================
+const PROJECT = 'jusbrasil-155317';
+const COMPANY_ID = 12211;
+
+// OAuth2 client ID — set up em console.cloud.google.com
+// APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID (Web application)
+// Add your domain to Authorized JavaScript origins.
+const OAUTH_CLIENT_ID = 'SEU_CLIENT_ID_AQUI.apps.googleusercontent.com';
+
+let accessToken = null;
+let tokenClient = null;
+
+// =====================================================================
+// AUTH
+// =====================================================================
+window.onload = function() {
+  // Populate month selector with last 6 months
+  populateMonthSelector();
+
+  // Check for saved token
+  const saved = sessionStorage.getItem('bq_token');
+  if (saved) {
+    accessToken = saved;
+    showDashboard();
+    loadAll();
+  }
+};
+
+function populateMonthSelector() {
+  const sel = document.getElementById('month-select');
+  const now = new Date();
+  for (let i = 1; i <= 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const yr = d.getFullYear();
+    const mo = d.getMonth() + 1;
+    const label = d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+    const opt = document.createElement('option');
+    opt.value = `${yr}-${mo}`;
+    opt.text = label.charAt(0).toUpperCase() + label.slice(1);
+    sel.appendChild(opt);
+  }
+}
+
+function signInWithGoogle() {
+  if (OAUTH_CLIENT_ID === 'SEU_CLIENT_ID_AQUI.apps.googleusercontent.com') {
+    showAuthError('Configure o OAUTH_CLIENT_ID no código HTML. Veja as instruções no rodapé ou use a opção de token abaixo.');
+    return;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: OAUTH_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/bigquery.readonly',
+    callback: (response) => {
+      if (response.error) {
+        showAuthError('Erro de autenticação: ' + response.error);
+        return;
+      }
+      accessToken = response.access_token;
+      sessionStorage.setItem('bq_token', accessToken);
+      showDashboard();
+      loadAll();
+    },
+  });
+  tokenClient.requestAccessToken();
+}
+
+function signInWithToken() {
+  const t = document.getElementById('token-input').value.trim();
+  if (!t) { showAuthError('Cole um token de acesso válido.'); return; }
+  accessToken = t;
+  sessionStorage.setItem('bq_token', t);
+  showDashboard();
+  loadAll();
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function showDashboard() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+}
+
+// =====================================================================
+// BQ QUERIES
+// =====================================================================
+async function runQuery(sql) {
+  const url = `https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT}/jobs`;
+  const body = {
+    configuration: { query: { query: sql, useLegacySql: false } },
+    jobReference: { projectId: PROJECT }
+  };
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    if (err.error && err.error.code === 401) {
+      sessionStorage.removeItem('bq_token');
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('dashboard').style.display = 'none';
+      showAuthError('Token expirado. Faça login novamente.');
+      throw new Error('Token expirado');
+    }
+    throw new Error(JSON.stringify(err.error || err));
+  }
+  const job = await res.json();
+  const jobId = job.jobReference.jobId;
+
+  // Poll for completion
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    const statusRes = await fetch(
+      `https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT}/jobs/${jobId}`,
+      { headers: { 'Authorization': `Bearer ${accessToken}` } }
+    );
+    const status = await statusRes.json();
+    if (status.status.state === 'DONE') {
+      if (status.status.errorResult) throw new Error(status.status.errorResult.message);
+      break;
+    }
+  }
+
+  const resultsRes = await fetch(
+    `https://bigquery.googleapis.com/bigquery/v2/projects/${PROJECT}/queries/${jobId}?maxResults=1000`,
+    { headers: { 'Authorization': `Bearer ${accessToken}` } }
+  );
+  const results = await resultsRes.json();
+  const fields = results.schema.fields.map(f => f.name);
+  return (results.rows || []).map(row =>
+    Object.fromEntries(fields.map((f, i) => [f, row.f[i].v]))
+  );
+}
+
+function tzDate(offset = 0) {
+  // Returns YYYY-MM-DD in America/Sao_Paulo (UTC-3) adjusted by offset days
+  const d = new Date();
+  d.setHours(d.getHours() - 3); // approx BRT
+  d.setDate(d.getDate() + offset);
+  return d.toISOString().slice(0, 10);
+}
+
+// Build query for exclusive base fria (fcn IN (37, 38)) with date range
+// Uses _created_at (partition field) for efficiency
+function queryExclusive(dateStart, dateEnd) {
+  return `
+    SELECT
+      SUM(IF(fcn = 37, 1, 0)) AS sem_autos,
+      SUM(IF(fcn = 38, 1, 0)) AS com_autos,
+      COUNT(*) AS total
+    FROM \`${PROJECT}.data_production_op_read.api_call_log\`
+    WHERE user_company_id = ${COMPANY_ID}
+      AND fcn IN (37, 38)
+      AND is_trial = FALSE
+      AND _created_at >= TIMESTAMP('${dateStart}')
+      AND _created_at < TIMESTAMP('${dateEnd}')
+  `;
+}
+
+// Total base fria (fcn IN (1, 9)) for "with update" diff
+function queryAllBaseFria(dateStart, dateEnd) {
+  return `
+    SELECT COUNT(*) AS total
+    FROM \`${PROJECT}.data_production_op_read.api_call_log\`
+    WHERE user_company_id = ${COMPANY_ID}
+      AND fcn IN (1, 9)
+      AND is_trial = FALSE
+      AND _created_at >= TIMESTAMP('${dateStart}')
+      AND _created_at < TIMESTAMP('${dateEnd}')
+  `;
+}
+
+// Monthly aggregate from monthly_event_count (historical closed months)
+function queryMonthlyCount(year, month) {
+  return `
+    SELECT
+      SUM(CASE WHEN evt_type = 137 THEN \`count\` ELSE 0 END) AS sem_autos,
+      SUM(CASE WHEN evt_type = 138 THEN \`count\` ELSE 0 END) AS com_autos,
+      SUM(CASE WHEN evt_type IN (137, 138) THEN \`count\` ELSE 0 END) AS exclusive_total,
+      SUM(CASE WHEN evt_type IN (101, 109) THEN \`count\` ELSE 0 END) AS all_total
+    FROM \`${PROJECT}.data_production_op_read.monthly_event_count\`
+    WHERE user_company_id = ${COMPANY_ID}
+      AND year = ${year}
+      AND month = ${month}
+      AND is_trial = FALSE
+      AND evt_type IN (101, 109, 137, 138)
+  `;
+}
+
+function fmt(n) {
+  if (n === null || n === undefined || n === '—') return '—';
+  const num = parseInt(n, 10);
+  if (isNaN(num)) return '—';
+  return num.toLocaleString('pt-BR');
+}
+
+function setMetric(id, value, sub) {
+  const el = document.getElementById(id);
+  el.textContent = fmt(value);
+  el.classList.remove('loading');
+  if (sub !== undefined) {
+    const subEl = document.getElementById(id + '-sub');
+    if (subEl) subEl.textContent = sub;
+  }
+}
+
+function setLoading(id) {
+  const el = document.getElementById(id);
+  el.textContent = '';
+  el.classList.add('loading');
+}
+
+// =====================================================================
+// LOAD DATA
+// =====================================================================
+async function loadAll() {
+  const btn = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  btn.classList.add('loading');
+  icon.style.animation = 'spin 1s linear infinite';
+
+  const banner = document.getElementById('error-banner');
+  banner.style.display = 'none';
+
+  ['m-today', 'm-yesterday', 'm-week', 'm-curmonth', 'm-update'].forEach(setLoading);
+
+  const today = tzDate(0);
+  const yesterday = tzDate(-1);
+  const tomorrow = tzDate(1);
+
+  // Monday of current week
+  const now = new Date(today);
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  const weekStartStr = weekStart.toISOString().slice(0, 10);
+
+  // Current month start
+  const curMonthStart = today.slice(0, 7) + '-01';
+
+  try {
+    // Run queries in parallel for speed
+    const [todayRows, yesterdayRows, weekRows, curMonthFromLog, allBaseFriaMonth] = await Promise.all([
+      runQuery(queryExclusive(today, tomorrow)),
+      runQuery(queryExclusive(yesterday, today)),
+      runQuery(queryExclusive(weekStartStr, tomorrow)),
+      runQuery(queryExclusive(curMonthStart, tomorrow)),
+      runQuery(queryAllBaseFria(curMonthStart, tomorrow)),
+    ]);
+
+    const todayTotal = parseInt(todayRows[0]?.total || 0);
+    const todaySemAutos = parseInt(todayRows[0]?.sem_autos || 0);
+    const todayComAutos = parseInt(todayRows[0]?.com_autos || 0);
+    setMetric('m-today', todayTotal, `${fmt(todaySemAutos)} s/ autos · ${fmt(todayComAutos)} c/ autos`);
+
+    const yestTotal = parseInt(yesterdayRows[0]?.total || 0);
+    setMetric('m-yesterday', yestTotal, `${fmt(parseInt(yesterdayRows[0]?.sem_autos||0))} s/ · ${fmt(parseInt(yesterdayRows[0]?.com_autos||0))} c/ autos`);
+
+    const weekTotal = parseInt(weekRows[0]?.total || 0);
+    setMetric('m-week', weekTotal, `desde ${weekStartStr}`);
+
+    const curMonthTotal = parseInt(curMonthFromLog[0]?.total || 0);
+    setMetric('m-curmonth', curMonthTotal, `${curMonthStart.slice(0, 7)} (parcial)`);
+
+    // "With update" = all base fria minus exclusive
+    const allBase = parseInt(allBaseFriaMonth[0]?.total || 0);
+    const withUpdate = allBase - curMonthTotal;
+    const updateEl = document.getElementById('m-update');
+    updateEl.textContent = fmt(Math.max(0, withUpdate));
+    updateEl.classList.remove('loading');
+    updateEl.className = `monitor-value ${withUpdate > 0 ? 'nonzero' : 'zero'}`;
+
+    const badge = document.getElementById('update-badge');
+    if (withUpdate > 100) {
+      badge.textContent = 'Atenção';
+      badge.className = 'badge yellow';
+    } else {
+      badge.textContent = 'Normal';
+      badge.className = 'badge green';
+    }
+
+    document.getElementById('last-updated').textContent = `Atualizado: ${new Date().toLocaleString('pt-BR')}`;
+  } catch (e) {
+    banner.textContent = `Erro ao carregar dados: ${e.message}`;
+    banner.style.display = 'block';
+    console.error(e);
+  } finally {
+    btn.classList.remove('loading');
+    icon.style.animation = '';
+  }
+}
+
+async function loadMonth() {
+  const val = document.getElementById('month-select').value;
+  if (!val) return;
+  const [yr, mo] = val.split('-').map(Number);
+  const histEl = document.getElementById('m-hist');
+  const histSub = document.getElementById('m-hist-sub');
+  histEl.textContent = '...';
+
+  try {
+    const rows = await runQuery(queryMonthlyCount(yr, mo));
+    const excl = parseInt(rows[0]?.exclusive_total || 0);
+    const all = parseInt(rows[0]?.all_total || 0);
+    const semAutos = parseInt(rows[0]?.sem_autos || 0);
+    const comAutos = parseInt(rows[0]?.com_autos || 0);
+    histEl.textContent = fmt(excl);
+    histSub.textContent = `exclusivas · ${fmt(semAutos)} s/ autos · ${fmt(comAutos)} c/ autos · ${fmt(all - excl)} c/ atualização`;
+  } catch (e) {
+    histEl.textContent = 'Erro';
+    histSub.textContent = e.message;
+  }
+}
+</script>
+</body>
+</html>
